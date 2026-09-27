@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { Settings } from "lucide-react"
+import { Settings, X, Plus } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useState, useEffect } from "react"
 import { Role, ROLES } from "@/lib/permissions"
@@ -23,7 +23,8 @@ export function WebsiteConfigPanel() {
   const t = useTranslations("profile.website")
   const tCard = useTranslations("profile.card")
   const [defaultRole, setDefaultRole] = useState<string>("")
-  const [emailDomains, setEmailDomains] = useState<string>("")
+  const [emailDomains, setEmailDomains] = useState<string[]>([])
+  const [newDomain, setNewDomain] = useState<string>("")
   const [adminContact, setAdminContact] = useState<string>("")
   const [maxEmails, setMaxEmails] = useState<string>(EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
   const [turnstileEnabled, setTurnstileEnabled] = useState(false)
@@ -53,7 +54,11 @@ export function WebsiteConfigPanel() {
         }
       }
       setDefaultRole(data.defaultRole)
-      setEmailDomains(data.emailDomains)
+      setEmailDomains(
+        data.emailDomains
+          ? data.emailDomains.split(",").map(d => d.trim()).filter(Boolean)
+          : []
+      )
       setAdminContact(data.adminContact)
       setMaxEmails(data.maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString())
       setTurnstileEnabled(Boolean(data.turnstile?.enabled))
@@ -63,14 +68,19 @@ export function WebsiteConfigPanel() {
   }
 
   const handleSave = async () => {
+    if (emailDomains.length === 0) {
+      toast({ title: t("domainsRequired"), variant: "destructive" })
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          defaultRole, 
-          emailDomains,
+        body: JSON.stringify({
+          defaultRole,
+          emailDomains: emailDomains.join(","),
           adminContact,
           maxEmails: maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
           turnstile: {
@@ -98,6 +108,31 @@ export function WebsiteConfigPanel() {
     }
   }
 
+
+  const DOMAIN_REGEX = /^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/i
+
+  const addDomain = () => {
+    const domain = newDomain.trim().toLowerCase().replace(/^@+/, "")
+    if (!domain) return
+
+    if (!DOMAIN_REGEX.test(domain)) {
+      toast({ title: t("invalidDomain"), variant: "destructive" })
+      return
+    }
+
+    if (emailDomains.includes(domain)) {
+      toast({ title: t("duplicateDomain"), variant: "destructive" })
+      return
+    }
+
+    setEmailDomains([...emailDomains, domain])
+    setNewDomain("")
+  }
+
+  const removeDomain = (domain: string) => {
+    setEmailDomains(emailDomains.filter(d => d !== domain))
+  }
+
   return (
     <div className="bg-background rounded-lg border-2 border-primary/20 p-6">
       <div className="flex items-center gap-2 mb-6">
@@ -120,14 +155,51 @@ export function WebsiteConfigPanel() {
           </Select>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm">{t("emailDomains")}:</span>
-          <div className="flex-1">
-            <Input 
-              value={emailDomains}
-              onChange={(e) => setEmailDomains(e.target.value)}
-              placeholder={t("emailDomainsPlaceholder")}
-            />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+          <span className="shrink-0 text-sm sm:pt-2">{t("emailDomains")}:</span>
+          <div className="flex-1 space-y-2">
+            {emailDomains.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {emailDomains.map((domain) => (
+                  <span
+                    key={domain}
+                    className="inline-flex items-center gap-1 rounded-md border bg-muted/40 py-1 pl-2 pr-1 text-sm"
+                  >
+                    {domain}
+                    <button
+                      type="button"
+                      onClick={() => removeDomain(domain)}
+                      aria-label={t("removeDomain")}
+                      className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault()
+                    addDomain()
+                  }
+                }}
+                placeholder={t("addDomainPlaceholder")}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={addDomain}
+                aria-label={t("addDomain")}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
