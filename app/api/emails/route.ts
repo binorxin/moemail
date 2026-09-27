@@ -14,12 +14,18 @@ function buildSearchCondition(search: string) {
   return sql`LOWER(${emails.address}) LIKE ${`%${escaped}%`} ESCAPE '\\'`
 }
 
+function buildDomainCondition(domain: string) {
+  const escaped = domain.toLowerCase().replace(/[\\%_]/g, c => `\\${c}`)
+  return sql`LOWER(${emails.address}) LIKE ${`%@${escaped}`} ESCAPE '\\'`
+}
+
 export async function GET(request: Request) {
   const userId = await getUserId()
 
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
   const search = searchParams.get('search')?.trim() ?? ''
+  const domain = searchParams.get('domain')?.trim() ?? ''
 
   const db = createDb()
 
@@ -27,7 +33,8 @@ export async function GET(request: Request) {
     const baseConditions = and(
       eq(emails.userId, userId!),
       gt(emails.expiresAt, new Date()),
-      search ? buildSearchCondition(search) : undefined
+      search ? buildSearchCondition(search) : undefined,
+      domain ? buildDomainCondition(domain) : undefined
     )
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })

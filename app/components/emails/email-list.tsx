@@ -9,6 +9,7 @@ import { Mail, RefreshCw, Search, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useThrottle } from "@/hooks/use-throttle"
 import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
@@ -59,7 +60,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
+  const [domain, setDomain] = useState("")
   const searchRef = useRef("")
+  const domainRef = useRef("")
   const { toast } = useToast()
 
   const fetchEmails = async (cursor?: string) => {
@@ -72,13 +75,17 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       if (currentSearch) {
         url.searchParams.set('search', currentSearch)
       }
+      const currentDomain = domainRef.current
+      if (currentDomain) {
+        url.searchParams.set('domain', currentDomain)
+      }
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
 
       if (!cursor) {
         const newEmails = data.emails
-        // 搜索时结果直接替换列表，不做增量合并
-        if (currentSearch) {
+        // 搜索或筛选域名时结果直接替换列表，不做增量合并
+        if (currentSearch || currentDomain) {
           setEmails(newEmails)
           setNextCursor(data.nextCursor)
           setTotal(data.total)
@@ -133,7 +140,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
   useEffect(() => {
     if (session) fetchEmails()
-  }, [session, search])
+  }, [session, search, domain])
 
   // 输入防抖 300ms 后触发搜索
   useEffect(() => {
@@ -212,21 +219,43 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           <CreateDialog onEmailCreated={handleRefresh} />
         </div>
 
-        <div className="relative px-2 py-1.5 border-b border-primary/20">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-8 pl-8 pr-8 text-sm"
-          />
-          {searchInput && (
-            <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              onClick={() => setSearchInput("")}
+        <div className="flex gap-2 px-2 py-1.5 border-b border-primary/20">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-8 pl-9 pr-8 text-sm"
+            />
+            {searchInput && (
+              <button
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => setSearchInput("")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {(config?.emailDomainsArray?.length ?? 0) > 1 && (
+            <Select
+              value={domain || "all"}
+              onValueChange={(value) => {
+                const next = value === "all" ? "" : value
+                domainRef.current = next
+                setDomain(next)
+              }}
             >
-              <X className="h-4 w-4" />
-            </button>
+              <SelectTrigger className="h-8 w-[150px] shrink-0 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allDomains")}</SelectItem>
+                {config?.emailDomainsArray?.map(d => (
+                  <SelectItem key={d} value={d}>@{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
 
@@ -279,7 +308,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             </div>
           ) : (
             <div className="text-center text-sm text-gray-500">
-              {search ? t("noSearchResults") : t("noEmails")}
+              {search || domain ? t("noSearchResults") : t("noEmails")}
             </div>
           )}
         </div>

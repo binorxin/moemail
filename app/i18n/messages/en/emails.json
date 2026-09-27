@@ -22,6 +22,7 @@
     "loadingMore": "Loading more...",
     "searchPlaceholder": "Search email addresses...",
     "noSearchResults": "No matching emails found",
+    "allDomains": "All domains",
     "noEmails": "No emails yet, create one!",
     "expiresAt": "Expires",
     "permanent": "Permanent",
