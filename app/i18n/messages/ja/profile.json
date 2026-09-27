@@ -102,6 +102,8 @@
     "title": "サイト設定",
     "description": "サイトの設定を管理（皇帝のみ利用可能）",
     "defaultRole": "新規ユーザーのデフォルトロール",
+    "registrationEnabled": "新規ユーザー登録を許可",
+    "registrationEnabledDescription": "無効にすると、新規ユーザーは登録できません（既存ユーザーは通常どおりログインできます）",
     "emailDomains": "メールボックスドメイン",
     "addDomainPlaceholder": "ドメインを入力して Enter で追加",
     "addDomain": "ドメインを追加",

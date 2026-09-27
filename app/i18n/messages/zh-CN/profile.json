@@ -102,6 +102,8 @@
     "title": "网站配置",
     "description": "配置网站设置（仅皇帝可用）",
     "defaultRole": "新用户默认角色",
+    "registrationEnabled": "允许新用户注册",
+    "registrationEnabledDescription": "关闭后，新用户将无法注册（已有用户可正常登录）",
     "emailDomains": "邮箱域名",
     "addDomainPlaceholder": "输入域名，回车添加",
     "addDomain": "添加域名",

@@ -35,6 +35,11 @@ const getDefaultRole = async (): Promise<Role> => {
   return ROLES.CIVILIAN
 }
 
+export async function isRegistrationEnabled() {
+  const registrationEnabled = await getRequestContext().env.SITE_CONFIG.get("REGISTRATION_ENABLED")
+  return registrationEnabled !== "false"
+}
+
 async function findOrCreateRole(db: Db, roleName: Role) {
   let role = await db.query.roles.findFirst({
     where: eq(roles.name, roleName),
@@ -93,12 +98,24 @@ export const {
   auth,
   signIn,
   signOut
-} = NextAuth(() => ({
-  secret: process.env.AUTH_SECRET,
-  adapter: DrizzleAdapter(createDb(), {
+} = NextAuth(() => {
+  const baseAdapter = DrizzleAdapter(createDb(), {
     usersTable: users,
     accountsTable: accounts,
-  }),
+  })
+
+  return {
+  secret: process.env.AUTH_SECRET,
+  adapter: {
+    ...baseAdapter,
+    // 关闭注册时，阻止 OAuth 首次登录自动创建新用户（已有用户登录不受影响）
+    createUser: async (user) => {
+      if (!(await isRegistrationEnabled())) {
+        throw new Error("网站已关闭注册，请联系管理员")
+      }
+      return baseAdapter.createUser!(user)
+    },
+  },
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
@@ -234,7 +251,8 @@ export const {
   session: {
     strategy: "jwt",
   },
-}))
+  }
+})
 
 export async function register(username: string, password: string) {
   const db = createDb()

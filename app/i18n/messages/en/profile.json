@@ -102,6 +102,8 @@
     "title": "Website Configuration",
     "description": "Configure website settings (Emperor only)",
     "defaultRole": "Default Role for New Users",
+    "registrationEnabled": "Allow New Registrations",
+    "registrationEnabledDescription": "When disabled, new users cannot register (existing users can still log in)",
     "emailDomains": "Email Domains",
     "addDomainPlaceholder": "Enter a domain, press Enter to add",
     "addDomain": "Add domain",

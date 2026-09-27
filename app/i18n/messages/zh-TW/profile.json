@@ -102,6 +102,8 @@
     "title": "網站設定",
     "description": "設定網站選項（僅皇帝可用）",
     "defaultRole": "新使用者預設角色",
+    "registrationEnabled": "允許新使用者註冊",
+    "registrationEnabledDescription": "關閉後，新使用者將無法註冊（已有使用者可正常登入）",
     "emailDomains": "郵箱網域",
     "addDomainPlaceholder": "輸入網域，按 Enter 新增",
     "addDomain": "新增網域",

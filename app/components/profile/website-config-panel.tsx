@@ -23,6 +23,7 @@ export function WebsiteConfigPanel() {
   const t = useTranslations("profile.website")
   const tCard = useTranslations("profile.card")
   const [defaultRole, setDefaultRole] = useState<string>("")
+  const [registrationEnabled, setRegistrationEnabled] = useState(true)
   const [emailDomains, setEmailDomains] = useState<string[]>([])
   const [newDomain, setNewDomain] = useState<string>("")
   const [adminContact, setAdminContact] = useState<string>("")
@@ -42,11 +43,12 @@ export function WebsiteConfigPanel() {
   const fetchConfig = async () => {
     const res = await fetch("/api/config")
     if (res.ok) {
-      const data = await res.json() as { 
+      const data = await res.json() as {
         defaultRole: Exclude<Role, typeof ROLES.EMPEROR>,
         emailDomains: string,
         adminContact: string,
         maxEmails: string,
+        registrationEnabled?: boolean,
         turnstile?: {
           enabled: boolean,
           siteKey: string,
@@ -54,6 +56,7 @@ export function WebsiteConfigPanel() {
         }
       }
       setDefaultRole(data.defaultRole)
+      setRegistrationEnabled(data.registrationEnabled !== false)
       setEmailDomains(
         data.emailDomains
           ? data.emailDomains.split(",").map(d => d.trim()).filter(Boolean)
@@ -80,6 +83,7 @@ export function WebsiteConfigPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           defaultRole,
+          registrationEnabled,
           emailDomains: emailDomains.join(","),
           adminContact,
           maxEmails: maxEmails || EMAIL_CONFIG.MAX_ACTIVE_EMAILS.toString(),
@@ -153,6 +157,22 @@ export function WebsiteConfigPanel() {
               <SelectItem value={ROLES.CIVILIAN}>{tCard("roles.CIVILIAN")}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="registration-enabled" className="text-sm font-medium">
+              {t("registrationEnabled")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t("registrationEnabledDescription")}
+            </p>
+          </div>
+          <Switch
+            id="registration-enabled"
+            checked={registrationEnabled}
+            onCheckedChange={setRegistrationEnabled}
+          />
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
