@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { CreateDialog } from "./create-dialog"
 import { ShareDialog } from "./share-dialog"
-import { Mail, RefreshCw, Trash2 } from "lucide-react"
+import { Mail, RefreshCw, Search, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useThrottle } from "@/hooks/use-throttle"
 import { EMAIL_CONFIG } from "@/config"
 import { useToast } from "@/components/ui/use-toast"
@@ -56,6 +57,9 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [total, setTotal] = useState(0)
   const [emailToDelete, setEmailToDelete] = useState<Email | null>(null)
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+  const searchRef = useRef("")
   const { toast } = useToast()
 
   const fetchEmails = async (cursor?: string) => {
@@ -64,11 +68,22 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
       if (cursor) {
         url.searchParams.set('cursor', cursor)
       }
+      const currentSearch = searchRef.current
+      if (currentSearch) {
+        url.searchParams.set('search', currentSearch)
+      }
       const response = await fetch(url)
       const data = await response.json() as EmailResponse
-      
+
       if (!cursor) {
         const newEmails = data.emails
+        // 搜索时结果直接替换列表，不做增量合并
+        if (currentSearch) {
+          setEmails(newEmails)
+          setNextCursor(data.nextCursor)
+          setTotal(data.total)
+          return
+        }
         const oldEmails = emails
 
         const lastDuplicateIndex = newEmails.findIndex(
@@ -118,7 +133,19 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
 
   useEffect(() => {
     if (session) fetchEmails()
-  }, [session])
+  }, [session, search])
+
+  // 输入防抖 300ms 后触发搜索
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = searchInput.trim()
+      if (next !== searchRef.current) {
+        searchRef.current = next
+        setSearch(next)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const handleDelete = async (email: Email) => {
     try {
@@ -184,7 +211,25 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
           </div>
           <CreateDialog onEmailCreated={handleRefresh} />
         </div>
-        
+
+        <div className="relative px-2 py-1.5 border-b border-primary/20">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="h-8 pl-8 pr-8 text-sm"
+          />
+          {searchInput && (
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setSearchInput("")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         <div className="flex-1 overflow-auto p-2" onScroll={handleScroll}>
           {loading ? (
             <div className="text-center text-sm text-gray-500">{t("loading")}</div>
@@ -234,7 +279,7 @@ export function EmailList({ onEmailSelect, selectedEmailId }: EmailListProps) {
             </div>
           ) : (
             <div className="text-center text-sm text-gray-500">
-              {t("noEmails")}
+              {search ? t("noSearchResults") : t("noEmails")}
             </div>
           )}
         </div>

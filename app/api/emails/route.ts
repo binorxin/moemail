@@ -9,18 +9,25 @@ export const runtime = "edge"
 
 const PAGE_SIZE = 20
 
+function buildSearchCondition(search: string) {
+  const escaped = search.toLowerCase().replace(/[\\%_]/g, c => `\\${c}`)
+  return sql`LOWER(${emails.address}) LIKE ${`%${escaped}%`} ESCAPE '\\'`
+}
+
 export async function GET(request: Request) {
   const userId = await getUserId()
 
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor')
-  
+  const search = searchParams.get('search')?.trim() ?? ''
+
   const db = createDb()
 
   try {
     const baseConditions = and(
       eq(emails.userId, userId!),
-      gt(emails.expiresAt, new Date())
+      gt(emails.expiresAt, new Date()),
+      search ? buildSearchCondition(search) : undefined
     )
 
     const totalResult = await db.select({ count: sql<number>`count(*)` })
@@ -51,17 +58,17 @@ export async function GET(request: Request) {
       ],
       limit: PAGE_SIZE + 1
     })
-    
+
     const hasMore = results.length > PAGE_SIZE
-    const nextCursor = hasMore 
+    const nextCursor = hasMore
       ? encodeCursor(
-          results[PAGE_SIZE - 1].createdAt.getTime(),
-          results[PAGE_SIZE - 1].id
-        )
+        results[PAGE_SIZE - 1].createdAt.getTime(),
+        results[PAGE_SIZE - 1].id
+      )
       : null
     const emailList = hasMore ? results.slice(0, PAGE_SIZE) : results
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       emails: emailList,
       nextCursor,
       total: totalCount
